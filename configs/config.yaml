@@ -1,0 +1,115 @@
+# -----------------------------------------
+# Shipment Risk Platform - Central Config
+# -----------------------------------------
+
+project:
+  name: shipment-risk-platform
+  version: 0.1.0
+
+# -- Data ----------------------------------
+data:
+  raw_path: data/raw/shipments_raw.csv
+  processed_path: data/processed/shipments_processed.csv
+  test_size: 0.15
+  val_size: 0.15
+  random_state: 42
+  target_column: risk_label
+
+  # Synthetic data generation
+  n_samples: 50000
+  fraud_rate: 0.04        # 4% base fraud rate
+  loss_rate: 0.03         # 3% base loss rate
+  damage_rate: 0.05       # 5% base damage rate
+
+# -- Features ------------------------------
+features:
+  numeric_features:
+    - shipment_value
+    - package_weight
+    - customer_order_count
+    - customer_dispute_rate
+    - customer_return_rate
+    - carrier_reliability_score
+    - address_risk_score
+    - delivery_distance_km
+    - days_to_delivery
+
+  categorical_features:
+    - carrier_name
+    - shipment_type
+    - delivery_zone
+    - payment_method
+    - address_type
+
+  derived_features:
+    - value_to_weight_ratio
+    - velocity_7d
+    - velocity_30d
+    - is_high_value
+    - is_weekend_order
+
+# -- Model ---------------------------------
+model:
+  name: shipment_risk_xgb
+  version: 1.0.0
+  artifact_path: models/
+
+  xgboost:
+    n_estimators: 300
+    max_depth: 6
+    learning_rate: 0.05
+    subsample: 0.8
+    colsample_bytree: 0.8
+    random_state: 42
+    eval_metric: auc
+
+  optuna:
+    n_trials: 20
+    direction: maximize
+    metric: roc_auc
+
+  thresholds:
+    low_risk: 0.30
+    medium_risk: 0.60
+    high_risk: 0.80
+
+# -- Risk Labels ---------------------------
+risk:
+  levels:
+    LOW:
+      min: 0.0
+      max: 0.30
+      recommendation: STANDARD_DELIVERY
+    MEDIUM:
+      min: 0.30
+      max: 0.60
+      recommendation: ENHANCED_TRACKING
+    HIGH:
+      min: 0.60
+      max: 0.80
+      recommendation: REQUIRE_SIGNATURE
+    CRITICAL:
+      min: 0.80
+      max: 1.0
+      recommendation: MANUAL_REVIEW
+
+# -- API -----------------------------------
+api:
+  host: 0.0.0.0
+  port: 8000
+  version: v1
+  prefix: /api/v1
+  rate_limit: 100/minute
+  max_batch_size: 100
+
+# -- MLflow --------------------------------
+mlflow:
+  tracking_uri: http://localhost:5000
+  experiment_name: shipment-risk-v1
+  registered_model_name: shipment_risk_model
+
+# -- Monitoring ----------------------------
+monitoring:
+  prometheus_port: 9090
+  grafana_port: 3000
+  metrics_prefix: shipment_risk
